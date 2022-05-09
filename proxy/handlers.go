@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"strings"
 	"errors"
-	"github.com/sammy007/open-ethereum-pool/rpc"
-	"github.com/sammy007/open-ethereum-pool/util"
+
+	"github.com/chainkorea/open-callisto-pool/rpc"
+	"github.com/chainkorea/open-callisto-pool/util"
 )
 
 // Allow only lowercase hexadecimal with 0x prefix
@@ -38,7 +39,7 @@ func (s *ProxyServer) handleGetWorkRPC(cs *Session) ([]string, *ErrorReply) {
 	if t == nil || len(t.Header) == 0 || s.isSick() {
 		return nil, &ErrorReply{Code: 0, Message: "Work not ready"}
 	}
-	return []string{t.Header, t.Seed, s.diff, util.ToHex(int64(t.Height))}, nil
+	return []string{t.Header, t.Seed, s.diff}, nil
 }
 
 // Stratum
@@ -54,22 +55,13 @@ func (s *ProxyServer) handleTCPSubmitRPC(cs *Session, id string, params []string
 }
 
 func (s *ProxyServer) handleSubmitRPC(cs *Session, login, id string, params []string) (bool, *ErrorReply) {
-	if !workerPattern.MatchString(id) {
+	if !workerPattern.MatchString(id){
 		id = "0"
 	}
 	if len(params) != 3 {
 		s.policy.ApplyMalformedPolicy(cs.ip)
 		log.Printf("Malformed params from %s@%s %v", login, cs.ip, params)
 		return false, &ErrorReply{Code: -1, Message: "Invalid params"}
-	}
-
-	stratumMode := cs.stratumMode()
-	if stratumMode != EthProxy {
-		for i := 0; i <= 2; i++ {
-			if params[i][0:2] != "0x" {
-				params[i] = "0x" + params[i]
-			}
-		}
 	}
 
 	if !noncePattern.MatchString(params[0]) || !hashPattern.MatchString(params[1]) || !hashPattern.MatchString(params[2]) {
@@ -80,25 +72,36 @@ func (s *ProxyServer) handleSubmitRPC(cs *Session, login, id string, params []st
 
 	go func(s *ProxyServer, cs *Session, login, id string, params []string) {
 		t := s.currentBlockTemplate()
+
+		//MFO: 	This function (s.processShare) will process a share as per hasher.Verify function of github.com/ethereum/ethash
+		//	output of this function is either:
+		//		true,true   	(Exists) which means share already exists and it is validShare
+		//		true,false		(Exists & invalid)which means share already exists and it is invalidShare or it is a block <-- should not ever happen
+		//		false,false		(stale/invalid)which means share is new, and it is not a block, might be a stale share or invalidShare
+		//		false,true		(valid)which means share is new, and it is a block or accepted share
+		//	When this function finishes, the results is already recorded in the db for valid shares or blocks.
 		exist, validShare := s.processShare(login, id, cs.ip, t, params)
 		ok := s.policy.ApplySharePolicy(cs.ip, !exist && validShare)
 
+
+		// if true,true or true,false
 		if exist {
 			log.Printf("Duplicate share from %s@%s %v", login, cs.ip, params)
 			cs.lastErr = errors.New("Duplicate share")
 		}
 
+		// if false, false
 		if !validShare {
+			//MFO: Here we have an invalid share
 			log.Printf("Invalid share from %s@%s", login, cs.ip)
 			// Bad shares limit reached, return error and close
 			if !ok {
 				cs.lastErr = errors.New("Invalid share")
 			}
 		}
-		if s.config.Proxy.Debug {
+		//MFO: Here we have a valid share and it is already recorded in DB by miner.go
+		// if false, true
 		log.Printf("Valid share from %s@%s", login, cs.ip)
-		}
-
 
 		if !ok {
 			cs.lastErr = errors.New("High rate of invalid shares")

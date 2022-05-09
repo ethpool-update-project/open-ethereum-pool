@@ -9,11 +9,12 @@ import (
 	"strconv"
 	"time"
 	"sync"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"github.com/sammy007/open-ethereum-pool/rpc"
-	"github.com/sammy007/open-ethereum-pool/storage"
-	"github.com/sammy007/open-ethereum-pool/util"
+	"github.com/chainkorea/open-callisto-pool/rpc"
+	"github.com/chainkorea/open-callisto-pool/storage"
+	"github.com/chainkorea/open-callisto-pool/util"
 )
 
 const txCheckInterval = 5 * time.Second
@@ -118,7 +119,7 @@ func (u *PayoutsProcessor) process() {
 		log.Println("Error while retrieving payees from backend:", err)
 		return
 	}
-	
+
 	waitingCount := 0
 	var wg sync.WaitGroup
 
@@ -196,7 +197,6 @@ func (u *PayoutsProcessor) process() {
 				log.Printf("Running post payout hook with result: %s", out)
 			}(postCommand, login, value)
 		}
-
 
 		// Log transaction hash
 		err = u.backend.WritePayment(login, txHash, amount)

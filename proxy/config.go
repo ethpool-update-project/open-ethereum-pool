@@ -1,10 +1,10 @@
 package proxy
 
 import (
-	"github.com/sammy007/open-ethereum-pool/api"
-	"github.com/sammy007/open-ethereum-pool/payouts"
-	"github.com/sammy007/open-ethereum-pool/policy"
-	"github.com/sammy007/open-ethereum-pool/storage"
+	"github.com/chainkorea/open-callisto-pool/api"
+	"github.com/chainkorea/open-callisto-pool/payouts"
+	"github.com/chainkorea/open-callisto-pool/policy"
+	"github.com/chainkorea/open-callisto-pool/storage"
 )
 
 type Config struct {
@@ -17,6 +17,7 @@ type Config struct {
 	Threads int `json:"threads"`
 
 	Coin  string         `json:"coin"`
+	Pplns int64          `json:"pplns"`
 	Redis storage.Config `json:"redis"`
 
 	BlockUnlocker payouts.UnlockerConfig `json:"unlocker"`
@@ -39,32 +40,20 @@ type Proxy struct {
 	StateUpdateInterval  string `json:"stateUpdateInterval"`
 	HashrateExpiration   string `json:"hashrateExpiration"`
 	StratumHostname      string `json:"stratumHostname"`
-	Algorithm            string `json:"algorithm"`
-
-	ForkBlock []ForkBlock `json:"forkBlock"`
 
 	Policy policy.Config `json:"policy"`
 
 	MaxFails    int64 `json:"maxFails"`
 	HealthCheck bool  `json:"healthCheck"`
-	Debug       bool  `json:"debug"`
 
 	Stratum Stratum `json:"stratum"`
 }
 
 type Stratum struct {
-	Enabled  bool   `json:"enabled"`
-	Listen   string `json:"listen"`
-	Timeout  string `json:"timeout"`
-	MaxConn  int    `json:"maxConn"`
-	TLS      bool   `json:"tls"`
-	CertFile string `json:"certFile"`
-	KeyFile  string `json:"keyFile"`
-}
-
-type ForkBlock struct {
-	Block     uint64 `json:"block"`
-	Algorithm string `json:"algorithm"`
+	Enabled bool   `json:"enabled"`
+	Listen  string `json:"listen"`
+	Timeout string `json:"timeout"`
+	MaxConn int    `json:"maxConn"`
 }
 
 type Upstream struct {
